@@ -22,7 +22,7 @@ namespace AssetLibrary
         private List<AssetLabel> m_searchFilter = new List<AssetLabel>();
         private List<SearchResult> m_searchResults = new List<SearchResult>();
         private Dictionary<string, string> m_guidPathCache = new Dictionary<string, string>();
-        private bool m_searchDirty;
+        private bool m_searchDirty, m_requireLabel;
 
         [MenuItem("Window/General/Asset Libary")]
         public static void OpenLibraryWindow()
@@ -73,12 +73,12 @@ namespace AssetLibrary
             if (m_searchDirty)
             {
                 m_searchResults.Clear();
-                var allAssets = AssetDatabase.FindAssets($"{m_search}");
+                var allAssets = AssetDatabase.FindAssets(m_search);
                 var matchCounter = 0;
                 foreach (var assetGuid in allAssets)
                 {
                     var path = GUIDToAssetPath(assetGuid);
-                    if (m_searchFilter.Count > 0 && !AssetLibrary.HasLabel(path))
+                    if ((m_searchFilter.Count > 0 || m_requireLabel) && !AssetLibrary.HasLabel(path))
                     {
                         continue;
                     }
@@ -135,10 +135,17 @@ namespace AssetLibrary
             EditorGUILayout.BeginVertical();
             EditorGUILayout.BeginHorizontal();
             var newSearch = EditorGUILayout.DelayedTextField(m_search, EditorStyles.toolbarSearchField);
-            if (GUILayout.Button(EditorGUIUtility.IconContent("Refresh"), EditorStyles.miniButtonRight, GUILayout.Width(20)))
+            if (GUILayout.Button(EditorGUIUtility.IconContent("Refresh"), EditorStyles.miniButtonLeft, GUILayout.Width(20)))
             {
                 m_searchDirty = true;
             }
+            GUI.color = m_requireLabel ? Color.green : Color.white;
+            if(GUILayout.Button(EditorGUIUtility.IconContent("FilterByLabel"), EditorStyles.miniButtonRight, GUILayout.Width(20)))
+            {
+                m_requireLabel = !m_requireLabel;
+                m_searchDirty = true;
+            }
+            GUI.color = Color.white;
             EditorGUILayout.EndHorizontal();
 
             if (newSearch != m_search)
@@ -146,17 +153,24 @@ namespace AssetLibrary
                 m_search = newSearch;
                 m_searchDirty = true;
             }
-            m_searchScroll = EditorGUILayout.BeginScrollView(m_searchScroll, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));     
+            m_searchScroll = EditorGUILayout.BeginScrollView(m_searchScroll, false, true, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));     
             foreach (var result in m_searchResults.Take(100))
             {
+                const int rowHeight = 16;
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField(new GUIContent(AssetPreview.GetMiniTypeThumbnail(result.Object.GetType())), GUILayout.Width(20));
-                if (GUILayout.Button(result.Object.name, EditorStyles.linkLabel))
+                EditorGUILayout.LabelField(new GUIContent(AssetPreview.GetMiniTypeThumbnail(result.Object.GetType())), GUILayout.Width(16), GUILayout.Height(rowHeight));
+                if (GUILayout.Button(result.Object.name, EditorStyles.linkLabel, GUILayout.Height(rowHeight)))
                 {
                     Selection.objects = new[] { result.Object };
                 }
-                GUILayout.Label(string.Join(',', AssetLibrary.GetLabels(result.Object).Select(l => l.ID)), EditorStyles.miniLabel, GUILayout.ExpandWidth(false));
+                GUI.color = new Color(1, 1, 1, .5f);
+                GUILayout.Label(string.Join(", ", AssetLibrary.GetLabels(result.Object).Select(l => l.ID)), EditorStyles.miniLabel, GUILayout.ExpandWidth(false), GUILayout.Height(rowHeight));
+                GUI.color = Color.white;
                 EditorGUILayout.EndHorizontal();
+            }
+            if(m_searchResults.Count == 0)
+            {
+                GUILayout.Label("No results found");
             }
 
             EditorGUILayout.EndScrollView();
@@ -189,7 +203,7 @@ namespace AssetLibrary
             }
             else
             {
-                GUILayout.Label($"{m_focusedObjects.Count} objects", "Box", GUILayout.ExpandWidth(true), GUILayout.Height(objectColumnWidth));
+                GUILayout.Label($"{m_focusedObjects.Count} objects", "Box", GUILayout.ExpandWidth(true), GUILayout.Height(150));
             }
             GUI.enabled = true;
 
@@ -219,6 +233,7 @@ namespace AssetLibrary
                 if (isInFilter)
                 {
                     minibuttonStyle.fontStyle = FontStyle.Bold;
+                    minibuttonStyle.normal.textColor = Color.green;
                     perLetterWidth = 12;
                 }
                 if (GUILayout.Button($" {label.Name} ", minibuttonStyle, GUILayout.ExpandWidth(false)))
@@ -233,7 +248,7 @@ namespace AssetLibrary
                     }
                     m_searchDirty = true;
                 }
-                if (GUILayout.Button("+", EditorStyles.miniButtonRight, GUILayout.ExpandWidth(false)))
+                if (GUILayout.Button(assetLabels.Contains(label) ? "×" : "+", EditorStyles.miniButtonRight, GUILayout.ExpandWidth(false)))
                 {
                     foreach (var obj in m_focusedObjects)
                     {
