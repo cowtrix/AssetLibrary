@@ -250,13 +250,28 @@ namespace AssetLibrary
                 }
                 if (GUILayout.Button(assetLabels.Contains(label) ? "×" : "+", EditorStyles.miniButtonRight, GUILayout.ExpandWidth(false)))
                 {
-                    foreach (var obj in m_focusedObjects)
+                    if (!assetLabels.Contains(label))
                     {
-                        var newLabels = AssetLibrary.GetLabels(obj).ToList();
-                        if (!newLabels.Contains(label))
+                        foreach (var obj in m_focusedObjects)
                         {
-                            newLabels.Add(label);
-                            AssetLibrary.SetLabels(obj, newLabels);
+                            var newLabels = AssetLibrary.GetLabels(obj).ToList();
+                            if (!newLabels.Contains(label))
+                            {
+                                newLabels.Add(label);
+                                AssetLibrary.SetLabels(obj, newLabels);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (var obj in m_focusedObjects)
+                        {
+                            var newLabels = AssetLibrary.GetLabels(obj).ToList();
+                            if (newLabels.Contains(label))
+                            {
+                                newLabels.Remove(label);
+                                AssetLibrary.SetLabels(obj, newLabels);
+                            }
                         }
                     }
                     GUIUtility.ExitGUI();

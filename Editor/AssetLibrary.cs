@@ -144,6 +144,10 @@ namespace AssetLibrary
 
         public static void UpdateLabelData(Object obj)
         {
+            if (!obj || obj.Equals(null))
+            {
+                return;
+            }
             var assetPath = AssetDatabase.GetAssetPath(obj);
             if (string.IsNullOrEmpty(assetPath))
             {
